@@ -3,7 +3,6 @@ import serial
 import serial.tools.list_ports
 import threading
 import sys
-from datetime import datetime
 
 BAUD = 115200
 
@@ -34,8 +33,6 @@ COMMANDS = [
     "fullness <0-100>",
     "day",
     "day <number>",
-    "settime YYYY-MM-DD HH:MM:SS",
-    "time",
     "status",
 ]
 
@@ -57,7 +54,6 @@ def main():
 
     print(f"Connected to {PORT} at {BAUD} baud")
     print("Commands:", ", ".join(COMMANDS))
-    print("Tip: type 'now' to set RTC to current system time")
     print("Type 'quit' to exit\n")
 
     t = threading.Thread(target=read_serial, args=(ser,), daemon=True)
@@ -79,10 +75,7 @@ def main():
         parts = lower.split()
         valid = False
 
-        if lower == "now":
-            cmd = datetime.now().strftime("settime %Y-%m-%d %H:%M:%S")
-            valid = True
-        elif lower in ("status", "time"):
+        if lower == "status":
             valid = True
         elif len(parts) == 2 and parts[0] in ("humidity", "fullness"):
             try:
@@ -99,9 +92,6 @@ def main():
                 valid = True
             except ValueError:
                 pass
-        elif len(parts) == 3 and parts[0] == "settime":
-            valid = True  # basic format check
-
         if valid:
             ser.write((cmd + "\n").encode())
         else:
