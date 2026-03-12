@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+import serial
+import threading
+import sys
+from datetime import datetime
+
+PORT = "/dev/ttyACM0"
+BAUD = 115200
+COMMANDS = [
+    "humidity <0-100>",
+    "fullness <0-100>",
+    "day",
+    "day <number>",
+    "settime YYYY-MM-DD HH:MM:SS",
+    "time",
+    "status",
+]
+
+def read_serial(ser):
+    while True:
+        try:
+            line = ser.readline().decode("utf-8", errors="replace").strip()
+            if line:
+                print(f"\r{line}\n> ", end="", flush=True)
+        except Exception:
+            break
+
+def main():
+    try:
+        ser = serial.Serial(PORT, BAUD, timeout=1)
+    except serial.SerialException as e:
+        print(f"Error opening {PORT}: {e}")
+        sys.exit(1)
+
+    print(f"Connected to {PORT} at {BAUD} baud")
+    print("Commands:", ", ".join(COMMANDS))
+    print("Tip: type 'now' to set RTC to current system time")
+    print("Type 'quit' to exit\n")
+
+    t = threading.Thread(target=read_serial, args=(ser,), daemon=True)
+    t.start()
+
+    while True:
+        try:
+            cmd = input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nExiting.")
+            break
+
+        if cmd == "quit":
+            break
+        if not cmd:
+            continue
+
+        lower = cmd.lower()
+        parts = lower.split()
+        valid = False
+
+        if lower == "now":
+            cmd = datetime.now().strftime("settime %Y-%m-%d %H:%M:%S")
+            valid = True
+        elif lower in ("status", "time"):
+            valid = True
+        elif len(parts) == 2 and parts[0] in ("humidity", "fullness"):
+            try:
+                val = int(parts[1])
+                if 0 <= val <= 100:
+                    valid = True
+            except ValueError:
+                pass
+        elif lower == "day":
+            valid = True
+        elif len(parts) == 2 and parts[0] == "day":
+            try:
+                int(parts[1])
+                valid = True
+            except ValueError:
+                pass
+        elif len(parts) == 3 and parts[0] == "settime":
+            valid = True  # basic format check
+
+        if valid:
+            ser.write((cmd + "\n").encode())
+        else:
+            print(f"Error: unknown command '{cmd}'")
+            print("Valid commands:", ", ".join(COMMANDS))
+
+    ser.close()
+
+if __name__ == "__main__":
+    main()
