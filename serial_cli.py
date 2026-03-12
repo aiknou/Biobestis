@@ -24,7 +24,7 @@ def find_port():
     if platform.system() == "Windows":
         return "COM3"
     elif platform.system() == "Darwin":
-        return "/dev/cu.usbmodem1101"
+        return "/dev/tty.usbmodem101"
     return "/dev/ttyACM0"
 
 
