@@ -1,11 +1,34 @@
 #!/usr/bin/env python3
 import serial
+import serial.tools.list_ports
 import threading
 import sys
 from datetime import datetime
 
-PORT = "/dev/ttyACM0"
 BAUD = 115200
+
+
+def find_port():
+    if len(sys.argv) > 1:
+        return sys.argv[1]
+    # Auto-detect: pick the first port that looks like a USB serial device
+    candidates = [
+        p.device for p in serial.tools.list_ports.comports()
+        if any(kw in (p.description or "").lower() for kw in ("usb", "uart", "acm", "xiao"))
+           or any(kw in (p.device or "").lower() for kw in ("acm", "usbmodem", "com"))
+    ]
+    if candidates:
+        return candidates[0]
+    # Fallback
+    import platform
+    if platform.system() == "Windows":
+        return "COM3"
+    elif platform.system() == "Darwin":
+        return "/dev/cu.usbmodem1101"
+    return "/dev/ttyACM0"
+
+
+PORT = find_port()
 COMMANDS = [
     "humidity <0-100>",
     "fullness <0-100>",
